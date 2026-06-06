@@ -1,6 +1,6 @@
 ---
 name: change-review
-description: Runs a Production Readiness Review (PRR) on the transformation's code changes before finalizing. Use this skill after all code changes are validated and before completing the transformation.
+description: ALWAYS use this skill. It runs a review on the transformation's code changes before finalizing. Use this skill after all code changes are validated and before completing the transformation. 
 ---
 # Change Review (PRR)
 
