@@ -1,6 +1,6 @@
 ---
 name: change-review
-description: ALWAYS use this skill. It runs a review on the transformation's code changes before finalizing. Use this skill after all code changes are validated and before completing the transformation. 
+description: Final review gate for every ATX transformation. Runs a Production Readiness Review (PRR / change review) on the transformation's code changes via a draft PR to catch deployment risks. MUST be invoked at the end of every transformation — after validation is complete irrespective of result from validation. Every transformation requires this review - BEFORE marking the transformation complete, finalizing, wrapping up, declaring success, submitting, or handing off.
 ---
 # Change Review (PRR)
 
