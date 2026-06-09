@@ -38,10 +38,11 @@ bash .aws/atx/skills/change-review/scripts/run_prr.sh \
   --agent-space-arn "$PRR_AGENT_SPACE_ARN" \
   --repository "$REPO" \
   --pr-number "$PR_NUMBER" \
-  --region "${AWS_REGION:-us-east-1}"
+  --profile "${PRR_AWS_PROFILE:-devops-agent}"
 ```
 
 The `PRR_AGENT_SPACE_ARN` environment variable must be set to the customer's CloudSmith AgentSpace ARN.
+The `PRR_AWS_PROFILE` environment variable (or `--profile`) specifies which AWS profile to use for DevOps Agent API calls. Defaults to `devops-agent`.
 
 The script will:
 - Verify the repository is associated with the AgentSpace

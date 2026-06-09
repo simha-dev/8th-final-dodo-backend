@@ -2,12 +2,13 @@
 set -euo pipefail
 
 # PRR (Change Review) via DevOps Agent APIs - Option A flow
-# Usage: run_prr.sh --agent-space-id ID --repository org/repo --pr-number NUM [--region REGION]
+# Usage: run_prr.sh --agent-space-arn ARN --repository org/repo --pr-number NUM [--region REGION] [--profile PROFILE]
 
 REGION="${AWS_REGION:-us-east-1}"
 AGENT_SPACE_ARN="${PRR_AGENT_SPACE_ARN:-}"
 REPOSITORY="${PRR_REPOSITORY:-}"
 PR_NUMBER="${PRR_PR_NUMBER:-}"
+PROFILE="${PRR_AWS_PROFILE:-}"
 POLL_INTERVAL=30
 MAX_POLL_ATTEMPTS=120  # 60 min at 30s intervals
 
@@ -17,6 +18,7 @@ while [[ $# -gt 0 ]]; do
     --repository) REPOSITORY="$2"; shift 2;;
     --pr-number) PR_NUMBER="$2"; shift 2;;
     --region) REGION="$2"; shift 2;;
+    --profile) PROFILE="$2"; shift 2;;
     *) echo "Unknown arg: $1" >&2; exit 1;;
   esac
 done
@@ -28,16 +30,24 @@ done
 # Extract ID from ARN (arn:aws:devops-agent:REGION:ACCOUNT:agent-space/ID)
 AGENT_SPACE_ID="${AGENT_SPACE_ARN##*/}"
 
+# Build profile args if set
+PROFILE_ARGS=()
+if [[ -n "$PROFILE" ]]; then
+  PROFILE_ARGS=(--profile "$PROFILE")
+fi
+
 echo "=== PRR Change Review ===" >&2
 echo "AgentSpace: $AGENT_SPACE_ID" >&2
 echo "Repository: $REPOSITORY" >&2
 echo "PR Number:  $PR_NUMBER" >&2
+[[ -n "$PROFILE" ]] && echo "Profile:    $PROFILE" >&2
 
 # 1. Verify repo association
 echo "Checking repository association..." >&2
 ASSOCIATIONS=$(aws devops-agent list-associations \
   --agent-space-id "$AGENT_SPACE_ID" \
   --region "$REGION" \
+  "${PROFILE_ARGS[@]}" \
   --output json)
 
 REPO_NAME=$(echo "$REPOSITORY" | cut -d'/' -f2)
@@ -66,6 +76,7 @@ TASK_RESPONSE=$(aws devops-agent create-backlog-task \
   --description "$DESCRIPTION" \
   --priority "HIGH" \
   --region "$REGION" \
+  "${PROFILE_ARGS[@]}" \
   --output json)
 
 TASK_ID=$(echo "$TASK_RESPONSE" | jq -r '.task.taskId')
@@ -78,6 +89,7 @@ for i in $(seq 1 $MAX_POLL_ATTEMPTS); do
     --agent-space-id "$AGENT_SPACE_ID" \
     --task-id "$TASK_ID" \
     --region "$REGION" \
+    "${PROFILE_ARGS[@]}" \
     --output json)
 
   STATUS=$(echo "$TASK_STATUS" | jq -r '.task.status')
@@ -104,6 +116,7 @@ EXECUTIONS=$(aws devops-agent list-executions \
   --agent-space-id "$AGENT_SPACE_ID" \
   --task-id "$TASK_ID" \
   --region "$REGION" \
+  "${PROFILE_ARGS[@]}" \
   --output json)
 
 EXECUTION_ID=$(echo "$EXECUTIONS" | jq -r '.executions[0].executionId')
@@ -116,6 +129,7 @@ JOURNAL=$(aws devops-agent list-journal-records \
   --execution-id "$EXECUTION_ID" \
   --record-type "release_analysis_report" \
   --region "$REGION" \
+  "${PROFILE_ARGS[@]}" \
   --output json)
 
 # Output the report JSON to stdout
