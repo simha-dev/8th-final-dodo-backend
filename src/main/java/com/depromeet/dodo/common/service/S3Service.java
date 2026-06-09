@@ -6,6 +6,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -18,7 +20,6 @@ import software.amazon.awssdk.services.s3.model.GetUrlRequest;
 import software.amazon.awssdk.services.s3.model.ObjectCannedACL;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
-import software.amazon.awssdk.services.s3.S3Utilities;
 import com.depromeet.dodo.common.dto.S3UploadImage;
 import com.depromeet.dodo.common.exception.AwsS3SaveFailedException;
 import com.depromeet.dodo.config.AWSConfig;
@@ -46,14 +47,15 @@ public class S3Service {
 		S3Client s3Client = awsConfig.AwsS3Client();
 
 		try {
+			byte[] fileBytes = file.getBytes();
 			PutObjectRequest putObjectRequest = PutObjectRequest.builder()
 				.bucket(bucket)
 				.key(fileName)
-				.contentLength(file.getBytes().length * 1L)
+				.contentLength((long) fileBytes.length)
 				.acl(ObjectCannedACL.PUBLIC_READ)
 				.build();
 
-			s3Client.putObject(putObjectRequest, RequestBody.fromInputStream(file.getInputStream(), file.getBytes().length));
+			s3Client.putObject(putObjectRequest, RequestBody.fromBytes(fileBytes));
 		} catch (S3Exception | IOException e) {
 			throw new AwsS3SaveFailedException(e);
 		}
@@ -86,15 +88,19 @@ public class S3Service {
 		S3Client s3Client = awsConfig.AwsS3Client();
 
 		try {
-			for (File file : files) {
-				String key = folderName + "/" + file.getName();
-				PutObjectRequest putObjectRequest = PutObjectRequest.builder()
-					.bucket(bucket)
-					.key(key)
-					.build();
-				s3Client.putObject(putObjectRequest, RequestBody.fromFile(file));
-			}
-		} catch (S3Exception e) {
+			List<CompletableFuture<Void>> futures = files.stream()
+				.map(file -> CompletableFuture.runAsync(() -> {
+					String key = folderName + "/" + file.getName();
+					PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+						.bucket(bucket)
+						.key(key)
+						.build();
+					s3Client.putObject(putObjectRequest, RequestBody.fromFile(file));
+				}))
+				.collect(Collectors.toList());
+
+			CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+		} catch (Exception e) {
 			throw new AwsS3SaveFailedException(e);
 		} finally {
 			files.stream().forEach(x -> x.delete());
