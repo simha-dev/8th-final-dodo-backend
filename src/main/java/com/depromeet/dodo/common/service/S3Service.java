@@ -100,7 +100,12 @@ public class S3Service {
 				.collect(Collectors.toList());
 
 			CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+		} catch (S3Exception e) {
+			throw new AwsS3SaveFailedException(e);
 		} catch (Exception e) {
+			if (e.getCause() instanceof S3Exception) {
+				throw new AwsS3SaveFailedException(e.getCause());
+			}
 			throw new AwsS3SaveFailedException(e);
 		} finally {
 			files.stream().forEach(x -> x.delete());
