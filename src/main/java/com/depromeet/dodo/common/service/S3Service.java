@@ -45,15 +45,17 @@ public class S3Service {
 	public String uploadFile(MultipartFile file, String fileName) {
 		S3Client s3Client = awsConfig.AwsS3Client();
 
+		long contentLength = file.getSize();
+
 		PutObjectRequest putObjectRequest = PutObjectRequest.builder()
 			.bucket(bucket)
 			.key(fileName)
-			.contentLength(file.getBytes().length * 1L)
+			.contentLength(contentLength)
 			.acl(ObjectCannedACL.PUBLIC_READ)
 			.build();
 
 		try {
-			s3Client.putObject(putObjectRequest, RequestBody.fromInputStream(file.getInputStream(), file.getBytes().length));
+			s3Client.putObject(putObjectRequest, RequestBody.fromInputStream(file.getInputStream(), contentLength));
 		} catch (S3Exception | IOException e) {
 			throw new AwsS3SaveFailedException(e);
 		}
