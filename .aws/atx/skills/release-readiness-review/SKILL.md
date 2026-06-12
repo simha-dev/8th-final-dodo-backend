@@ -16,18 +16,27 @@ After your code changes pass validation (build succeeds, tests pass), you MUST r
 
 ### 1. Create a Draft Pull Request
 
-Create a **draft** pull request on GitHub for your changes:
+Create a **draft** pull request for your changes on the repository's Git provider, then note its repository (`owner/repo`) and PR number to pass to the script in step 2.
+
+Use the command appropriate for the repo's remote. For example, if the remote is **GitHub**, use the `gh` CLI:
 
 ```bash
 gh pr create --draft --title "ATX: <transformation-description>" --body "Automated transformation - pending Release Readiness Review"
-```
 
-Capture the PR number and repository:
-
-```bash
 PR_NUMBER=$(gh pr view --json number -q '.number')
 REPO=$(gh repo view --json nameWithOwner -q '.nameWithOwner')
 ```
+
+For other providers, use the equivalent command. For **GitLab**, open a draft merge request with `glab` and capture the project path and MR iid:
+
+```bash
+glab mr create --draft --title "ATX: <transformation-description>" --description "Automated transformation - pending Release Readiness Review"
+
+PR_NUMBER=$(glab mr view --output json | jq -r '.iid')
+REPO=$(glab repo view --output json | jq -r '.path_with_namespace')
+```
+
+The review script auto-detects the provider from the repo's `origin` remote, so you pass the repository and change number the same way for either provider (for GitLab, `--pr-number` is the MR iid).
 
 ### 2. Run the Release Readiness Review
 
@@ -37,12 +46,12 @@ Execute the Release Readiness Review script with the PR details:
 bash .aws/atx/skills/release-readiness-review/scripts/run_prr.sh \
   --agent-space-arn "$AGENT_SPACE_ARN" \
   --repository "$REPO" \
-  --pr-number "$PR_NUMBER" \
-  --profile "${PRR_AWS_PROFILE:-devops-agent}"
+  --pr-number "$PR_NUMBER"
 ```
 
 The `AGENT_SPACE_ARN` environment variable must be set to the customer's CloudSmith AgentSpace ARN.
-The `PRR_AWS_PROFILE` environment variable (or `--profile`) specifies which AWS profile to use for DevOps Agent API calls. Defaults to `devops-agent`.
+
+The AWS profile is **optional**: if `PRR_AWS_PROFILE` (or `--profile`) is not set, the script uses the default AWS credentials. Set it only when the AgentSpace lives in a different account/profile than the one ATX is running with (e.g. `PRR_AWS_PROFILE=devops-agent`).
 
 The script will:
 - Verify the repository is associated with the AgentSpace
