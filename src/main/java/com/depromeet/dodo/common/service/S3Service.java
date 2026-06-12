@@ -3,6 +3,7 @@ package com.depromeet.dodo.common.service;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -11,15 +12,19 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.model.AmazonS3Exception;
-import com.amazonaws.services.s3.model.CannedAccessControlList;
-import com.amazonaws.services.s3.model.DeleteObjectRequest;
-import com.amazonaws.services.s3.model.ObjectMetadata;
-import com.amazonaws.services.s3.model.PutObjectRequest;
-import com.amazonaws.services.s3.transfer.MultipleFileUpload;
-import com.amazonaws.services.s3.transfer.TransferManager;
-import com.amazonaws.services.s3.transfer.TransferManagerBuilder;
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.S3Utilities;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetUrlRequest;
+import software.amazon.awssdk.services.s3.model.ObjectCannedACL;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.S3Exception;
+import software.amazon.awssdk.transfer.s3.S3TransferManager;
+import software.amazon.awssdk.transfer.s3.model.CompletedUpload;
+import software.amazon.awssdk.transfer.s3.model.Upload;
+import software.amazon.awssdk.transfer.s3.model.UploadRequest;
+
 import com.depromeet.dodo.common.dto.S3UploadImage;
 import com.depromeet.dodo.common.exception.AwsS3SaveFailedException;
 import com.depromeet.dodo.config.AWSConfig;
@@ -35,6 +40,7 @@ import lombok.extern.slf4j.Slf4j;
 public class S3Service {
 
 	private final AWSConfig awsConfig;
+	private final S3TransferManager s3TransferManager;
 
 	@Value("${cloud.aws.s3.bucket}")
 	private String bucket;
@@ -44,15 +50,18 @@ public class S3Service {
 
 	@SneakyThrows
 	public String uploadFile(MultipartFile file, String fileName) {
-		AmazonS3 s3Client = awsConfig.AwsS3Client();
-
-		ObjectMetadata metaData = new ObjectMetadata();
-		metaData.setContentLength(file.getBytes().length);
+		S3Client s3Client = awsConfig.awsS3Client();
 
 		try {
-			s3Client.putObject(new PutObjectRequest(bucket, fileName, file.getInputStream(), metaData)
-				.withCannedAcl(CannedAccessControlList.PublicRead));
-		} catch (AmazonS3Exception | IOException e) {
+			PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+				.bucket(bucket)
+				.key(fileName)
+				.contentLength(file.getBytes().length * 1L)
+				.acl(ObjectCannedACL.PUBLIC_READ)
+				.build();
+
+			s3Client.putObject(putObjectRequest, RequestBody.fromInputStream(file.getInputStream(), file.getBytes().length));
+		} catch (S3Exception | IOException e) {
 			throw new AwsS3SaveFailedException(e);
 		}
 
@@ -60,8 +69,13 @@ public class S3Service {
 	}
 
 	public String getUrl(String path, String fileName) {
-		AmazonS3 s3Client = awsConfig.AwsS3Client();
-		return s3Client.getUrl(path, fileName).toString();
+		S3Client s3Client = awsConfig.awsS3Client();
+		S3Utilities utilities = s3Client.utilities();
+		URL url = utilities.getUrl(GetUrlRequest.builder()
+			.bucket(path)
+			.key(fileName)
+			.build());
+		return url.toString();
 	}
 
 	public List<S3UploadImage> uploadFiles(String folderName, List<S3UploadImage> s3UploadImages) {
@@ -77,21 +91,25 @@ public class S3Service {
 
 	@SneakyThrows
 	private List<String> s3UploadFileList(String folderName, List<File> files) {
-		AmazonS3 s3Client = awsConfig.AwsS3Client();
-		TransferManager xferMgr = TransferManagerBuilder.standard()
-			.withS3Client(s3Client)
-			.build();
-
-		MultipleFileUpload xfer = xferMgr.uploadFileList(bucket, folderName, new File(filePath), files);
-
 		try {
-			xfer.waitForCompletion();
-			xfer.waitForException();
-		} catch (InterruptedException e) {
+			for (File file : files) {
+				String key = folderName + "/" + file.getName();
+				PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+					.bucket(bucket)
+					.key(key)
+					.build();
+
+				Upload upload = s3TransferManager.upload(UploadRequest.builder()
+					.putObjectRequest(putObjectRequest)
+					.requestBody(software.amazon.awssdk.core.async.AsyncRequestBody.fromFile(file))
+					.build());
+
+				upload.completionFuture().join();
+			}
+		} catch (Exception e) {
 			throw new AwsS3SaveFailedException(e);
 		} finally {
 			files.stream().forEach(x -> x.delete());
-			xferMgr.shutdownNow();
 		}
 
 		List<String> filesUrl = new ArrayList<>();
@@ -117,8 +135,11 @@ public class S3Service {
 	}
 
 	public void deleteS3Object(String path, Image image) {
-		AmazonS3 s3Client = awsConfig.AwsS3Client();
-		s3Client.deleteObject(new DeleteObjectRequest(path, image.getFileName()));
+		S3Client s3Client = awsConfig.awsS3Client();
+		s3Client.deleteObject(DeleteObjectRequest.builder()
+			.bucket(path)
+			.key(image.getFileName())
+			.build());
 	}
 
 }
