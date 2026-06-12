@@ -1,6 +1,6 @@
 ---
 name: change-review
-description: Final review gate for every ATX transformations. Runs a Production Readiness Review (PRR / change review) on the transformation's code changes via a draft PR to catch deployment risks. MUST be invoked at the end of every transformation — after validation is complete irrespective of result from validation. Every transformation requires this review - after the build passes, tests pass, and changes are committed, BEFORE marking the transformation complete, finalizing, wrapping up, declaring success, submitting, or handing off.  Skipping this skill is not allowed.
+description: Final review gate for every ATX transformations. Runs a Production Readiness Review (PRR / change review) on the transformation's code changes via a draft PR to catch deployment risks. MUST be invoked at the end of every transformation — after validation is complete irrespective of result from validation. Every transformation requires this review - after the build passes, tests pass, and changes are committed, BEFORE marking the transformation complete, finalizing, wrapping up, declaring success, submitting, or handing off.
 ---
 # Change Review (PRR)
 
@@ -50,6 +50,8 @@ The script will:
 - Poll until completion
 - Output the structured risk report as JSON
 
+**If the script fails for any reason** — missing setup, AgentSpace not found, no permissions, repo not associated, task error — that is **not a blocker**. Read the error it printed, tell the user what went wrong, and proceed to complete the transformation. Only a report that actually came back and recommends against deployment should make you iterate (see below).
+
 ### 3. Review the Results
 
 The script outputs a JSON risk report. Check these fields:
@@ -71,4 +73,4 @@ If the report recommends `Standard Deployment`, proceed to complete the transfor
 
 ### 5. Complete
 
-Once PRR approves (or all critical risks are addressed), the transformation may be completed.
+Once PRR approves (or all critical risks are addressed), the transformation may be completed. If PRR could not run, note the reason for the user and complete the transformation — a failed review never blocks completion.

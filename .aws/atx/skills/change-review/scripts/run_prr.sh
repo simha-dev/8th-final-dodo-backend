@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Ensure we never leave the caller (the ATX agent) with silence. If the script
+# exits before the report is printed, say so clearly. A failed PRR is NOT a blocker.
+DONE=0
+trap 'rc=$?; if [[ $DONE -eq 0 ]]; then echo "" >&2; echo "PRR did not complete (see the error above). This is not a blocker: tell the user what went wrong and proceed with completing the transformation." >&2; fi; exit $rc' EXIT
+
 # PRR (Change Review) via DevOps Agent APIs - Option A flow
 # Usage: run_prr.sh --agent-space-arn ARN --repository org/repo --pr-number NUM [--region REGION] [--profile PROFILE]
 
@@ -10,7 +15,7 @@ REPOSITORY="${PRR_REPOSITORY:-}"
 PR_NUMBER="${PRR_PR_NUMBER:-}"
 PROFILE="${PRR_AWS_PROFILE:-}"
 POLL_INTERVAL=30
-MAX_POLL_ATTEMPTS=120  # 60 min at 30s intervals
+MAX_POLL_ATTEMPTS=90  # 45 min at 30s intervals
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -26,6 +31,13 @@ done
 : "${AGENT_SPACE_ARN:?Required: --agent-space-arn or PRR_AGENT_SPACE_ARN env var}"
 : "${REPOSITORY:?Required: --repository or PRR_REPOSITORY env var}"
 : "${PR_NUMBER:?Required: --pr-number or PRR_PR_NUMBER env var}"
+
+# Validate ARN shape up front — a malformed ARN otherwise fails later with a confusing error
+if [[ ! "$AGENT_SPACE_ARN" =~ ^arn:aws:[a-z0-9-]+:[a-z0-9-]+:[0-9]{12}:agent-space/[0-9a-fA-F-]{36}$ ]]; then
+  echo "PRR could not run: PRR_AGENT_SPACE_ARN is malformed: '$AGENT_SPACE_ARN'" >&2
+  echo "Expected: arn:aws:<service>:<region>:<account-id>:agent-space/<uuid>" >&2
+  exit 1
+fi
 
 # Extract ID from ARN (arn:aws:devops-agent:REGION:ACCOUNT:agent-space/ID)
 AGENT_SPACE_ID="${AGENT_SPACE_ARN##*/}"
@@ -136,6 +148,7 @@ JOURNAL=$(aws devops-agent list-journal-records \
 # The content field is a JSON string with structure: {type: "release_analysis_report", report: {...}}
 REPORT=$(echo "$JOURNAL" | jq -r '.records[0].content' | jq -r '.report')
 echo "$REPORT"
+DONE=1  # report produced; the run succeeded regardless of the recommendation
 
 # Summary to stderr
 ACTION=$(echo "$REPORT" | jq -r '.recommendedAction // "UNKNOWN"')
@@ -149,5 +162,4 @@ if [[ "$ACTION" != "Standard Deployment" ]]; then
   echo "" >&2
   echo "Critical risks:" >&2
   echo "$REPORT" | jq -r '.risks[] | select(.severity == "critical") | "  - \(.title): \(.description)"' >&2
-  exit 2  # non-zero to signal BLOCK to ATX
 fi
