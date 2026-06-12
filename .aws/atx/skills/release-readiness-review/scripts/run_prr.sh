@@ -2,15 +2,15 @@
 set -euo pipefail
 
 # Ensure we never leave the caller (the ATX agent) with silence. If the script
-# exits before the report is printed, say so clearly. A failed PRR is NOT a blocker.
+# exits before the report is printed, say so clearly. A failed Release Readiness Review is NOT a blocker.
 DONE=0
-trap 'rc=$?; if [[ $DONE -eq 0 ]]; then echo "" >&2; echo "PRR did not complete (see the error above). This is not a blocker: tell the user what went wrong and proceed with completing the transformation." >&2; fi; exit $rc' EXIT
+trap 'rc=$?; if [[ $DONE -eq 0 ]]; then echo "" >&2; echo "The Release Readiness Review did not complete (see the error above). This is not a blocker: tell the user what went wrong and proceed with completing the transformation." >&2; fi; exit $rc' EXIT
 
-# PRR (Change Review) via DevOps Agent APIs - Option A flow
+# Release Readiness Review via DevOps Agent APIs - Option A flow
 # Usage: run_prr.sh --agent-space-arn ARN --repository org/repo --pr-number NUM [--region REGION] [--profile PROFILE]
 
 REGION="${AWS_REGION:-us-east-1}"
-AGENT_SPACE_ARN="${PRR_AGENT_SPACE_ARN:-}"
+AGENT_SPACE_ARN="${AGENT_SPACE_ARN:-}"
 REPOSITORY="${PRR_REPOSITORY:-}"
 PR_NUMBER="${PRR_PR_NUMBER:-}"
 PROFILE="${PRR_AWS_PROFILE:-}"
@@ -28,13 +28,13 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-: "${AGENT_SPACE_ARN:?Required: --agent-space-arn or PRR_AGENT_SPACE_ARN env var}"
+: "${AGENT_SPACE_ARN:?Required: --agent-space-arn or AGENT_SPACE_ARN env var}"
 : "${REPOSITORY:?Required: --repository or PRR_REPOSITORY env var}"
 : "${PR_NUMBER:?Required: --pr-number or PRR_PR_NUMBER env var}"
 
 # Validate ARN shape up front — a malformed ARN otherwise fails later with a confusing error
 if [[ ! "$AGENT_SPACE_ARN" =~ ^arn:aws:[a-z0-9-]+:[a-z0-9-]+:[0-9]{12}:agent-space/[0-9a-fA-F-]{36}$ ]]; then
-  echo "PRR could not run: PRR_AGENT_SPACE_ARN is malformed: '$AGENT_SPACE_ARN'" >&2
+  echo "Release Readiness Review could not run: AGENT_SPACE_ARN is malformed: '$AGENT_SPACE_ARN'" >&2
   echo "Expected: arn:aws:<service>:<region>:<account-id>:agent-space/<uuid>" >&2
   exit 1
 fi
@@ -48,7 +48,7 @@ if [[ -n "$PROFILE" ]]; then
   PROFILE_ARGS=(--profile "$PROFILE")
 fi
 
-echo "=== PRR Change Review ===" >&2
+echo "=== Release Readiness Review ===" >&2
 echo "AgentSpace: $AGENT_SPACE_ID" >&2
 echo "Repository: $REPOSITORY" >&2
 echo "PR Number:  $PR_NUMBER" >&2
@@ -76,15 +76,16 @@ if [[ -z "$MATCH" ]]; then
 fi
 echo "Found association: $MATCH" >&2
 
-# 2. Create backlog task (trigger PRR)
-echo "Triggering Change Review..." >&2
+# 2. Create backlog task (trigger Release Readiness Review)
+echo "Triggering Release Readiness Review..." >&2
 DESCRIPTION=$(jq -nc --arg repo "$REPOSITORY" --arg pr "$PR_NUMBER" \
   '{agentInput: {content: {githubPrContent: [{repository: $repo, prNumber: $pr, hostname: "github.com"}]}}}')
 
 TASK_RESPONSE=$(aws devops-agent create-backlog-task \
   --agent-space-id "$AGENT_SPACE_ID" \
   --task-type "CHANGE_REVIEW" \
-  --title "PRR: ATX transformation validation" \
+  `# task type stays CHANGE_REVIEW until the rename is deployed server-side` \
+  --title "Release Readiness Review: ATX transformation validation" \
   --description "$DESCRIPTION" \
   --priority "HIGH" \
   --region "$REGION" \

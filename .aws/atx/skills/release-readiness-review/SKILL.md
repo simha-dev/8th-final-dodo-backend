@@ -1,10 +1,10 @@
 ---
-name: change-review
-description: Final review gate for every ATX transformations. Runs a Production Readiness Review (PRR / change review) on the transformation's code changes via a draft PR to catch deployment risks. MUST be invoked at the end of every transformation — after validation is complete irrespective of result from validation. Every transformation requires this review - after the build passes, tests pass, and changes are committed, BEFORE marking the transformation complete, finalizing, wrapping up, declaring success, submitting, or handing off.
+name: release-readiness-review
+description: Final review gate for every ATX transformations. Runs a Release Readiness Review on the transformation's code changes via a draft PR to catch deployment risks. MUST be invoked at the end of every transformation — after validation is complete irrespective of result from validation. Every transformation requires this review - after the build passes, tests pass, and changes are committed, BEFORE marking the transformation complete, finalizing, wrapping up, declaring success, submitting, or handing off.
 ---
-# Change Review (PRR)
+# Release Readiness Review
 
-After your code changes pass validation (build succeeds, tests pass), you MUST run a Production Readiness Review before completing the transformation.
+After your code changes pass validation (build succeeds, tests pass), you MUST run a Release Readiness Review before completing the transformation.
 
 ## When to use
 
@@ -19,7 +19,7 @@ After your code changes pass validation (build succeeds, tests pass), you MUST r
 Create a **draft** pull request on GitHub for your changes:
 
 ```bash
-gh pr create --draft --title "ATX: <transformation-description>" --body "Automated transformation - pending PRR review"
+gh pr create --draft --title "ATX: <transformation-description>" --body "Automated transformation - pending Release Readiness Review"
 ```
 
 Capture the PR number and repository:
@@ -29,24 +29,24 @@ PR_NUMBER=$(gh pr view --json number -q '.number')
 REPO=$(gh repo view --json nameWithOwner -q '.nameWithOwner')
 ```
 
-### 2. Run the Change Review
+### 2. Run the Release Readiness Review
 
-Execute the PRR script with the PR details:
+Execute the Release Readiness Review script with the PR details:
 
 ```bash
-bash .aws/atx/skills/change-review/scripts/run_prr.sh \
-  --agent-space-arn "$PRR_AGENT_SPACE_ARN" \
+bash .aws/atx/skills/release-readiness-review/scripts/run_prr.sh \
+  --agent-space-arn "$AGENT_SPACE_ARN" \
   --repository "$REPO" \
   --pr-number "$PR_NUMBER" \
   --profile "${PRR_AWS_PROFILE:-devops-agent}"
 ```
 
-The `PRR_AGENT_SPACE_ARN` environment variable must be set to the customer's CloudSmith AgentSpace ARN.
+The `AGENT_SPACE_ARN` environment variable must be set to the customer's CloudSmith AgentSpace ARN.
 The `PRR_AWS_PROFILE` environment variable (or `--profile`) specifies which AWS profile to use for DevOps Agent API calls. Defaults to `devops-agent`.
 
 The script will:
 - Verify the repository is associated with the AgentSpace
-- Trigger a Change Review task
+- Trigger a Release Readiness Review task
 - Poll until completion
 - Output the structured risk report as JSON
 
@@ -73,4 +73,4 @@ If the report recommends `Standard Deployment`, proceed to complete the transfor
 
 ### 5. Complete
 
-Once PRR approves (or all critical risks are addressed), the transformation may be completed. If PRR could not run, note the reason for the user and complete the transformation — a failed review never blocks completion.
+Once the Release Readiness Review approves (or all critical risks are addressed), the transformation may be completed. If the Release Readiness Review could not run, note the reason for the user and complete the transformation — a failed review never blocks completion.
