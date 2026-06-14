@@ -17,6 +17,7 @@
     <properties>
         <java.version>1.8</java.version>
         <swagger.version>2.9.2</swagger.version>
+        <awssdk.version>2.20.162</awssdk.version>
     </properties>
 
     <dependencies>
@@ -52,9 +53,9 @@
             <version>${swagger.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-aws</artifactId>
-            <version>2.2.1.RELEASE</version>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+            <version>${awssdk.version}</version>
         </dependency>
         <dependency>
             <groupId>com.vividsolutions</groupId>
