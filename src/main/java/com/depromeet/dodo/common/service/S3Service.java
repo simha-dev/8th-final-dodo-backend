@@ -93,14 +93,14 @@ public class S3Service {
 					.build();
 				s3Client.putObject(putObjectRequest, RequestBody.fromFile(file));
 			}
-		} catch (S3Exception e) {
+		} catch (software.amazon.awssdk.core.exception.SdkException | java.io.UncheckedIOException e) {
 			throw new AwsS3SaveFailedException(e);
 		} finally {
 			files.stream().forEach(x -> x.delete());
 		}
 
 		List<String> filesUrl = new ArrayList<>();
-		files.stream().forEach(x -> filesUrl.add(getUrl(bucket.concat("/" + folderName), x.getName())));
+		files.stream().forEach(x -> filesUrl.add(getUrl(bucket, folderName + "/" + x.getName())));
 		return filesUrl;
 	}
 
