@@ -49,11 +49,20 @@ bash .aws/atx/skills/release-readiness-review/scripts/run_prr.sh \
   --pr-number "$PR_NUMBER"
 ```
 
+Both `--repository` and `--pr-number` are required and must be passed on the command line:
+
+- `--repository`: the full repository identifier.
+  - GitHub: `owner/repo` (e.g. `simha-dev/8th-final-dodo-backend`)
+  - GitLab: the full project path `namespace/project`, including any nested groups (e.g. `mygroup/subgroup/myproject`)
+- `--pr-number`: the change number (digits only).
+  - GitHub: the pull request number (e.g. `8`)
+  - GitLab: the merge request iid (e.g. `8`)
+
 > **This is a long-running command.** The review typically takes 10-15 minutes and can take up to 45 minutes. When you invoke it, set the command/tool timeout to **at least 45 minutes (2700s)** and let it run to completion — do not use a short timeout and do not interrupt it. The script polls and prints progress every 30s; that output is normal, not a hang. (The script enforces its own 45-minute cap internally.)
 
 The `AGENT_SPACE_ARN` environment variable must be set to the customer's DevOps AgentSpace ARN.
 
-The AWS profile is **optional**: if `PRR_AWS_PROFILE` (or `--profile`) is not set, the script uses the default AWS credentials. Set it only when the AgentSpace lives in a different account/profile than the one ATX is running with (e.g. `PRR_AWS_PROFILE=devops-agent`).
+The AWS profile is **optional**: if `DEVOPS_AWS_PROFILE` (or `--profile`) is not set, the script uses the default AWS credentials. Set it only when the AgentSpace lives in a different account/profile than the one ATX is running with (e.g. `DEVOPS_AWS_PROFILE=devops-agent`).
 
 The script will:
 - Verify the repository is associated with the AgentSpace

@@ -8,16 +8,19 @@ trap 'rc=$?; if [[ $DONE -eq 0 ]]; then echo "" >&2; echo "The Release Readiness
 
 # Release Readiness Review via DevOps Agent APIs - Option A flow
 # Usage: run_prr.sh --agent-space-arn ARN --repository org/repo --pr-number NUM [--region REGION] [--profile PROFILE]
+#
+# NOTE: The Release Readiness Review (DevOps Agent) is currently only available
+# in us-east-1. Region defaults to us-east-1; do not override it with another region.
 
 REGION="${AWS_REGION:-us-east-1}"
 AGENT_SPACE_ARN="${AGENT_SPACE_ARN:-}"
-REPOSITORY="${PRR_REPOSITORY:-}"
-PR_NUMBER="${PRR_PR_NUMBER:-}"
-PROFILE="${PRR_AWS_PROFILE:-}"
+REPOSITORY=""   # per-invocation; provided via --repository
+PR_NUMBER=""    # per-invocation; provided via --pr-number
+PROFILE="${DEVOPS_AWS_PROFILE:-}"
 POLL_INTERVAL=30
 MAX_POLL_ATTEMPTS=90  # 45 min at 30s intervals
 
-PROVIDER="${PRR_PROVIDER:-}"  # github|gitlab; auto-detected from the git remote if empty
+PROVIDER=""  # github|gitlab; auto-detected from the git remote, override with --provider
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -32,8 +35,15 @@ while [[ $# -gt 0 ]]; do
 done
 
 : "${AGENT_SPACE_ARN:?Required: --agent-space-arn or AGENT_SPACE_ARN env var}"
-: "${REPOSITORY:?Required: --repository or PRR_REPOSITORY env var}"
-: "${PR_NUMBER:?Required: --pr-number or PRR_PR_NUMBER env var}"
+: "${REPOSITORY:?Required: --repository}"
+: "${PR_NUMBER:?Required: --pr-number}"
+
+# The Release Readiness Review (DevOps Agent) is only available in us-east-1.
+if [[ "$REGION" != "us-east-1" ]]; then
+  echo "Release Readiness Review could not run: it is only available in us-east-1, but region '$REGION' was requested." >&2
+  echo "Unset AWS_REGION / --region (defaults to us-east-1) or set it to us-east-1." >&2
+  exit 1
+fi
 
 # Determine the Git provider. Use the explicit override if given, otherwise
 # auto-detect from the origin remote. Only GitHub and GitLab are supported;

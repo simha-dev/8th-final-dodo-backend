@@ -34,15 +34,17 @@ The skill lives at `.aws/atx/skills/release-readiness-review/` in each target re
 
 ### Configuration
 
-| Env var | CLI override | Description |
-|---------|-------------|-------------|
+| Env var | CLI flag | Description |
+|---------|----------|-------------|
 | `AGENT_SPACE_ARN` | `--agent-space-arn` | AgentSpace ARN (constant per customer) |
 | `AWS_REGION` | `--region` | AWS region (defaults to us-east-1) |
-| `PRR_REPOSITORY` | `--repository` | GitHub org/repo |
-| `PRR_PR_NUMBER` | `--pr-number` | PR number to review |
+| `PRR_AWS_PROFILE` | `--profile` | Optional AWS profile; uses default credentials if unset |
+| — | `--repository` | GitHub org/repo (GitLab: project path); per-invocation, CLI only |
+| — | `--pr-number` | PR number (GitLab: MR iid); per-invocation, CLI only |
 
 ### Prerequisites
 
+- The Release Readiness Review (DevOps Agent) is currently **only available in `us-east-1`**. Region defaults to us-east-1; do not set another region.
 - AWS credentials with `aidevops:CreateBacklogTask`, `GetBacklogTask`, `ListExecutions`, `ListJournalRecords`, `ListAssociations` permissions
 - AgentSpace with the target repository associated (GitHub association)
 - `gh` or `glab` CLI authenticated (for draft PR creation)
