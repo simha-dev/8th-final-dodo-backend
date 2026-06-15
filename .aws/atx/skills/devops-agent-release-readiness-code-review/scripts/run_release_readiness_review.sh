@@ -7,7 +7,7 @@ DONE=0
 trap 'rc=$?; if [[ $DONE -eq 0 ]]; then echo "" >&2; echo "The Release Readiness Review did not complete (see the error above). This is not a blocker: tell the user what went wrong and proceed with completing the transformation." >&2; fi; exit $rc' EXIT
 
 # Release Readiness Review via DevOps Agent APIs - Option A flow
-# Usage: run_prr.sh --agent-space-arn ARN --repository org/repo --pr-number NUM [--region REGION] [--profile PROFILE]
+# Usage: run_release_readiness_review.sh --agent-space-arn ARN --repository org/repo --pr-number NUM [--region REGION] [--profile PROFILE]
 #
 # NOTE: The Release Readiness Review (DevOps Agent) is currently only available
 # in us-east-1. Region defaults to us-east-1; do not override it with another region.
@@ -156,8 +156,7 @@ fi
 
 TASK_RESPONSE=$(aws devops-agent create-backlog-task \
   --agent-space-id "$AGENT_SPACE_ID" \
-  --task-type "CHANGE_REVIEW" \
-  `# task type stays CHANGE_REVIEW until the rename is deployed server-side` \
+  --task-type "RELEASE_READINESS_REVIEW" \
   --title "Release Readiness Review: ATX transformation validation" \
   --description "$DESCRIPTION" \
   --priority "HIGH" \

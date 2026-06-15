@@ -1,5 +1,5 @@
 ---
-name: release-readiness-review
+name: devops-agent-release-readiness-code-review
 description: Final review gate for every ATX transformations. Runs a Release Readiness Review on the transformation's code changes via a draft PR to catch deployment risks. MUST be invoked at the end of every transformation — after validation is complete irrespective of result from validation. Every transformation requires this review - after the build passes, tests pass, and changes are committed, BEFORE marking the transformation complete, finalizing, wrapping up, declaring success, submitting, or handing off.
 ---
 # Release Readiness Review
@@ -40,14 +40,16 @@ The review script auto-detects the provider from the repo's `origin` remote, so 
 
 ### 2. Run the Release Readiness Review
 
-Execute the Release Readiness Review script with the PR details:
+Execute the Release Readiness Review script with the PR details. The script lives next to this `SKILL.md` under `scripts/`, so run it using the path to wherever this skill is installed:
 
 ```bash
-bash .aws/atx/skills/release-readiness-review/scripts/run_prr.sh \
+bash <skill-dir>/scripts/run_release_readiness_review.sh \
   --agent-space-arn "$AGENT_SPACE_ARN" \
   --repository "$REPO" \
   --pr-number "$PR_NUMBER"
 ```
+
+Replace `<skill-dir>` with the directory that contains this `SKILL.md` (for example, `.aws/atx/skills/devops-agent-release-readiness-code-review` if the skill is installed there).
 
 Both `--repository` and `--pr-number` are required and must be passed on the command line:
 

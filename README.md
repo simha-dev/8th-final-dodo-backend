@@ -13,18 +13,18 @@ When ATX performs code transformations, the Release Readiness Review skill acts 
 
 ## Client-Side Skill
 
-The skill lives at `.aws/atx/skills/release-readiness-review/` in each target repo:
+The skill lives at `.aws/atx/skills/devops-agent-release-readiness-code-review/` in each target repo:
 
 ```
-.aws/atx/skills/release-readiness-review/
+.aws/atx/skills/devops-agent-release-readiness-code-review/
 ├── SKILL.md              # Instructions for ATX (when/how to invoke the Release Readiness Review)
 └── scripts/
-    └── run_prr.sh        # Calls DevOps Agent APIs via AWS CLI
+    └── run_release_readiness_review.sh   # Calls DevOps Agent APIs via AWS CLI
 ```
 
 ### How it works
 
-`run_prr.sh` performs the Option A (API-driven) flow:
+`run_release_readiness_review.sh` performs the Option A (API-driven) flow:
 
 1. `list-associations` - verifies the repo is associated with the AgentSpace
 2. `create-backlog-task` - triggers the review (task type `CHANGE_REVIEW`) with the PR number
@@ -71,7 +71,7 @@ export AWS_REGION=us-east-1
 atx custom def exec -n AWS/java-aws-sdk-v1-to-v2 -p /path/to/repo -c "mvn clean test" -x -t
 
 # Or invoke the skill script directly for testing
-bash .aws/atx/skills/release-readiness-review/scripts/run_prr.sh \
+bash .aws/atx/skills/devops-agent-release-readiness-code-review/scripts/run_release_readiness_review.sh \
   --repository "simha-dev/fake-aws-codebuild-jenkins-plugin" \
   --pr-number "1"
 ```
