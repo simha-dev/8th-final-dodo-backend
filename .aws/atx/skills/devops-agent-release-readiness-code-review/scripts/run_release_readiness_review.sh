@@ -38,6 +38,12 @@ done
 : "${REPOSITORY:?Required: --repository}"
 : "${PR_NUMBER:?Required: --pr-number}"
 
+# Normalize the repository identifier: strip leading/trailing slashes that are
+# common copy-paste artifacts (e.g. "org/repo/" from a URL bar). The normalized
+# form is what we match against associations and send to the API.
+REPOSITORY="${REPOSITORY#/}"
+REPOSITORY="${REPOSITORY%/}"
+
 # The Release Readiness Review (DevOps Agent) is only available in us-east-1.
 if [[ "$REGION" != "us-east-1" ]]; then
   echo "Release Readiness Review could not run: it is only available in us-east-1, but region '$REGION' was requested." >&2
@@ -57,11 +63,19 @@ if [[ -z "$PROVIDER" ]]; then
     exit 1
   fi
   case "$REMOTE_URL" in
+    https://*|http://*) HOST_SEGMENT="${REMOTE_URL#*://}"; HOST_SEGMENT="${HOST_SEGMENT#*@}"; HOST_SEGMENT="${HOST_SEGMENT%%/*}";;
+    ssh://*)            HOST_SEGMENT="${REMOTE_URL#ssh://}"; HOST_SEGMENT="${HOST_SEGMENT#*@}"; HOST_SEGMENT="${HOST_SEGMENT%%[/:]*}";;
+    *@*)                HOST_SEGMENT="${REMOTE_URL#*@}"; HOST_SEGMENT="${HOST_SEGMENT%%:*}";;
+    *)                  HOST_SEGMENT="${REMOTE_URL%%[/:]*}";;
+  esac
+  # Match on the host portion only, so a repo/path segment such as
+  # 'github-tools' in a GitLab URL cannot be misclassified as GitHub.
+  case "$HOST_SEGMENT" in
     *github*) PROVIDER="github";;
     *gitlab*) PROVIDER="gitlab";;
     *)
-      echo "Release Readiness Review could not run: unsupported Git provider for remote '$REMOTE_URL'." >&2
-      echo "Only GitHub and GitLab are supported." >&2
+      echo "Release Readiness Review could not run: unsupported Git provider for remote host '$HOST_SEGMENT' (remote '$REMOTE_URL')." >&2
+      echo "Only GitHub and GitLab are supported. Override with --provider github|gitlab if needed." >&2
       exit 1;;
   esac
 fi
@@ -204,7 +218,11 @@ EXECUTIONS=$(aws devops-agent list-executions \
   ${PROFILE_ARGS[@]+"${PROFILE_ARGS[@]}"} \
   --output json)
 
-EXECUTION_ID=$(echo "$EXECUTIONS" | jq -r '.executions[0].executionId')
+EXECUTION_ID=$(echo "$EXECUTIONS" | jq -r '.executions[0].executionId // empty')
+if [[ -z "$EXECUTION_ID" || "$EXECUTION_ID" == "null" ]]; then
+  echo "Release Readiness Review could not run: task $TASK_ID completed but no execution is visible yet. Retry shortly." >&2
+  exit 1
+fi
 echo "Execution: $EXECUTION_ID" >&2
 
 # 5. Get risk report
@@ -219,13 +237,19 @@ JOURNAL=$(aws devops-agent list-journal-records \
 
 # Output the report JSON to stdout
 # The content field is a JSON string with structure: {type: "release_analysis_report", report: {...}}
-REPORT=$(echo "$JOURNAL" | jq -r '.records[0].content' | jq -r '.report')
+REPORT=$(echo "$JOURNAL" | jq -r '.records[0].content // empty' | jq -r '.report // empty')
+if [[ -z "$REPORT" || "$REPORT" == "null" ]]; then
+  echo "Release Readiness Review could not run: no risk report found in the journal records for execution $EXECUTION_ID." >&2
+  exit 1
+fi
 echo "$REPORT"
 DONE=1  # report produced; the run succeeded regardless of the recommendation
 
-# Summary to stderr
-ACTION=$(echo "$REPORT" | jq -r '.recommendedAction // "UNKNOWN"')
-RISK_COUNT=$(echo "$REPORT" | jq -r '.risks | length // 0')
+# Summary to stderr. This runs after DONE=1 and is purely informational, so it
+# must never be able to fail the script (a jq error here would otherwise be
+# masked by the EXIT trap and surface as a confusing non-zero exit).
+ACTION=$(echo "$REPORT" | jq -r '.recommendedAction // "UNKNOWN"' 2>/dev/null || echo "UNKNOWN")
+RISK_COUNT=$(echo "$REPORT" | jq -r '(.risks // []) | (if type == "array" then length else 0 end)' 2>/dev/null || echo 0)
 echo "" >&2
 echo "=== RESULT ===" >&2
 echo "Recommended Action: $ACTION" >&2
@@ -234,5 +258,5 @@ echo "Risks Found: $RISK_COUNT" >&2
 if [[ "$ACTION" != "Standard Deployment" ]]; then
   echo "" >&2
   echo "Critical risks:" >&2
-  echo "$REPORT" | jq -r '.risks[] | select(.severity == "critical") | "  - \(.title): \(.description)"' >&2
+  echo "$REPORT" | jq -r '(.risks // []) | (if type == "array" then .[] else empty end) | select(.severity == "critical") | "  - \(.title): \(.description)"' 2>/dev/null >&2 || true
 fi

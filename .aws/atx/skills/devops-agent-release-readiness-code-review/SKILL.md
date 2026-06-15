@@ -1,6 +1,6 @@
 ---
 name: devops-agent-release-readiness-code-review
-description: Final review gate for every ATX transformations. Runs a Release Readiness Review on the transformation's code changes via a draft PR to catch deployment risks. MUST be invoked at the end of every transformation — after validation is complete irrespective of result from validation. Every transformation requires this review - after the build passes, tests pass, and changes are committed, BEFORE marking the transformation complete, finalizing, wrapping up, declaring success, submitting, or handing off.
+description: Final review gate for every ATX transformation. Runs a Release Readiness Review on the transformation's code changes via a draft PR to catch deployment risks. MUST be invoked at the end of every transformation, after the build passes, tests pass, and changes are committed, and BEFORE marking the transformation complete, finalizing, wrapping up, declaring success, submitting, or handing off.
 ---
 # Release Readiness Review
 
@@ -54,7 +54,7 @@ Replace `<skill-dir>` with the directory that contains this `SKILL.md` (for exam
 Both `--repository` and `--pr-number` are required and must be passed on the command line:
 
 - `--repository`: the full repository identifier.
-  - GitHub: `owner/repo` (e.g. `simha-dev/8th-final-dodo-backend`)
+  - GitHub: `owner/repo` (e.g. `my-org/my-service`)
   - GitLab: the full project path `namespace/project`, including any nested groups (e.g. `mygroup/subgroup/myproject`)
 - `--pr-number`: the change number (digits only).
   - GitHub: the pull request number (e.g. `8`)
