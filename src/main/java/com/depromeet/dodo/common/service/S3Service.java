@@ -38,22 +38,20 @@ public class S3Service {
 	@Value("${cloud.aws.s3.bucket}")
 	private String bucket;
 
-	@Value("${aws.file.path}")
-	private String filePath;
-
 	@SneakyThrows
 	public String uploadFile(MultipartFile file, String fileName) {
 		S3Client s3Client = awsConfig.AwsS3Client();
 
+		long contentLength = file.getSize();
 		PutObjectRequest putObjectRequest = PutObjectRequest.builder()
 			.bucket(bucket)
 			.key(fileName)
-			.contentLength((long) file.getBytes().length)
+			.contentLength(contentLength)
 			.acl(ObjectCannedACL.PUBLIC_READ)
 			.build();
 
 		try {
-			s3Client.putObject(putObjectRequest, RequestBody.fromInputStream(file.getInputStream(), file.getBytes().length));
+			s3Client.putObject(putObjectRequest, RequestBody.fromInputStream(file.getInputStream(), contentLength));
 		} catch (S3Exception | IOException e) {
 			throw new AwsS3SaveFailedException(e);
 		}
@@ -103,7 +101,7 @@ public class S3Service {
 		}
 
 		List<String> filesUrl = new ArrayList<>();
-		files.stream().forEach(x -> filesUrl.add(getUrl(bucket + "/" + folderName, x.getName())));
+		files.stream().forEach(x -> filesUrl.add(getUrl(bucket, folderName + "/" + x.getName())));
 		return filesUrl;
 	}
 
