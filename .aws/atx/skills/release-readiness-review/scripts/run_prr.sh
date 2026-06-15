@@ -69,7 +69,7 @@ if [[ ! "$AGENT_SPACE_ARN" =~ ^arn:aws:[a-z0-9-]+:[a-z0-9-]+:[0-9]{12}:agent-spa
   exit 1
 fi
 
-# Extract ID from ARN (arn:aws:devops-agent:REGION:ACCOUNT:agent-space/ID)
+# Extract ID from ARN (arn:aws:aidevops:REGION:ACCOUNT:agent-space/ID)
 AGENT_SPACE_ID="${AGENT_SPACE_ARN##*/}"
 
 # Build profile args if set

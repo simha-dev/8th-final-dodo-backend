@@ -43,31 +43,30 @@ The skill lives at `.aws/atx/skills/release-readiness-review/` in each target re
 
 ### Prerequisites
 
-- AWS credentials with `devops-agent:CreateBacklogTask`, `GetBacklogTask`, `ListExecutions`, `ListJournalRecords`, `ListAssociations` permissions
+- AWS credentials with `aidevops:CreateBacklogTask`, `GetBacklogTask`, `ListExecutions`, `ListJournalRecords`, `ListAssociations` permissions
 - AgentSpace with the target repository associated (GitHub association)
-- `gh` CLI authenticated (for draft PR creation)
+- `gh` or `glab` CLI authenticated (for draft PR creation)
 - `jq` installed
 
 ## Demo Repos
 
-- `fake-aws-codebuild-jenkins-plugin` - Java/Maven Jenkins plugin (tested with `AWS/java-aws-sdk-v1-to-v2` transformation)
-- `8th-final-dodo-backend` - Additional test repo with skill installed
+- `8th-final-dodo-backend` - Test repo with skill installed (tested with `AWS/java-aws-sdk-v1-to-v2` transformation)
 
 ## Quick Start
 
 ```bash
-AWS_REGION=us-east-1 AGENT_SPACE_ARN=arn:aws:devops-agent:us-east-1:588148762356:agent-space/d6b49980-a10d-49ca-a6d5-fb1ffe72a078 atx custom def exec -n AWS/java-aws-sdk-v1-to-v2 -p . -c "mvn clean test" -x -t
+AWS_REGION=us-east-1 AGENT_SPACE_ARN=arn:aws:aidevops:us-east-1:588148762356:agent-space/d6b49980-a10d-49ca-a6d5-fb1ffe72a078 atx custom def exec -n AWS/java-aws-sdk-v1-to-v2 -p . -c "mvn clean test" -x -t
 ```
 
 ## Running
 
 ```bash
 # Set constants
-export AGENT_SPACE_ARN="arn:aws:devops-agent:us-east-1:588148762356:agent-space/d6b49980-a10d-49ca-a6d5-fb1ffe72a078"
+export AGENT_SPACE_ARN="<YOUR_DEVOPS_AGENT_SPACE_ARN"
 export AWS_REGION=us-east-1
 
 # Run ATX transformation (skill is auto-discovered)
-atx custom def exec -n AWS/java-aws-sdk-v1-to-v2 -p ./fake-aws-codebuild-jenkins-plugin -c "mvn clean test" -x -t
+atx custom def exec -n AWS/java-aws-sdk-v1-to-v2 -p /path/to/repo -c "mvn clean test" -x -t
 
 # Or invoke the skill script directly for testing
 bash .aws/atx/skills/release-readiness-review/scripts/run_prr.sh \

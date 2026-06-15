@@ -51,7 +51,7 @@ bash .aws/atx/skills/release-readiness-review/scripts/run_prr.sh \
 
 > **This is a long-running command.** The review typically takes 10-15 minutes and can take up to 45 minutes. When you invoke it, set the command/tool timeout to **at least 45 minutes (2700s)** and let it run to completion — do not use a short timeout and do not interrupt it. The script polls and prints progress every 30s; that output is normal, not a hang. (The script enforces its own 45-minute cap internally.)
 
-The `AGENT_SPACE_ARN` environment variable must be set to the customer's CloudSmith AgentSpace ARN.
+The `AGENT_SPACE_ARN` environment variable must be set to the customer's DevOps AgentSpace ARN.
 
 The AWS profile is **optional**: if `PRR_AWS_PROFILE` (or `--profile`) is not set, the script uses the default AWS credentials. Set it only when the AgentSpace lives in a different account/profile than the one ATX is running with (e.g. `PRR_AWS_PROFILE=devops-agent`).
 
